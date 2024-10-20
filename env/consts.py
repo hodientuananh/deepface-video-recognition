@@ -51,12 +51,12 @@ CHOSEN_PARAMS = {
 
 ## Directory paths
 ROOT_GROUND_TRUTH ="ground_truth"
-ROOT_QUERY ="character_query"
-ROOT_SHOTS ="shots"
-ROOT_THUMBNAIL ="thumbnail"
-ROOT_FEATURES_QUERY = "character_emb_query"
-ROOT_FAISS_INDEX = "faiss_index"
-ROOT_EVALUATION = "evaluation"
+ROOT_QUERY ="data/character_query"
+ROOT_SHOTS ="data/shots"
+ROOT_THUMBNAIL ="data/thumbnail"
+ROOT_FEATURES_QUERY = "data/character_emb_query"
+ROOT_FAISS_INDEX = "data/faiss_index"
+ROOT_EVALUATION = "data/evaluation"
 
 BATCH_SIZE = 10
 SHOT_INFO_POSITION = -2
