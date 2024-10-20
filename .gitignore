@@ -1,0 +1,11 @@
+data
+
+.cache
+.ipynb_checkpoints
+.sync
+.virtual_documents
+.vscode
+
+__pycache__
+*.pyc
+*.pyo
