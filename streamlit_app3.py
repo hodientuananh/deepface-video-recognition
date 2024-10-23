@@ -5,17 +5,16 @@ import streamlit as st
 
 from PIL import Image
 from math import ceil
-from function.evaluation import calculate_metrics
-from function.retrieval import get_movie, retrieve_shots_from_query
-from function.path_util import get_check_key_and_character_key, get_chosen_avatar_dir_path, get_chosen_avatar_emb_path, \
-        get_evaluation_file, get_face_det_model_emb_name, get_faiss_index_path, \
-        get_read_file_emb_path, init_chosen_character, init_chosen_emb_fol, \
-        init_chosen_face_det, init_chosen_movie, init_chosen_movie_fol, add_to_shot_result
-from function.service_util import convert_list_to_numpy_array, get_frequency_dict_based_character, get_topK_most_frequent_elements
-from env.consts import CHOSEN_CHARACTER, CHOSEN_MOVIE, CHOSEN_MOVIE_FOL, \
-    CHOSEN_PARAMS, DET_EMB_MAPPING, DET_MODELS, EMB_MODELS, MOVIES_CHARACTERS_MAPPING, \
+
+from function.utils import convert_list_to_numpy_array, get_topK_most_frequent_elements, \
+    get_check_key_and_character_key, get_movie
+from env.consts import CHOSEN_PARAMS, DET_EMB_MAPPING, DET_MODELS, DETECTION, EMB_MODELS, EMBBEDDING, MOVIE, MOVIES_CHARACTERS_MAPPING, \
     ROOT_SHOTS, MOVIES_DIR_MAPPING, ROOT_GROUND_TRUTH, ROOT_QUERY, ROOT_SHOTS, BATCH_SIZE, \
-    ROOT_THUMBNAIL, ROW_SIZE_MIN, ROW_SIZE_MAX, ROW_SIZE_INIT
+    ROOT_THUMBNAIL, ROW_SIZE_MIN, ROW_SIZE_MAX, ROW_SIZE_INIT, TOP_K_MIN, TOP_K_MAX, TOP_K_STEP, TOP_K_INIT
+    
+from model.Evaluation import Evaluation
+from model.Path import Path
+from model.Shot import Shot
 
 # ###################################################################################################
 # GENERAL SETTINGS
@@ -37,12 +36,13 @@ ap = 0
 columns = np.array([])
 rows = np.array([])
 
+path = Path()
 # ###################################################################################################
 # INIT STREAMLIT APP
 ## Parameters
 st.sidebar.markdown("<h1 style='text-align:left; font-size: 18px;'>Select Params</h1>",unsafe_allow_html=True)
 ROW_SIZE = st.sidebar.select_slider("Row size:", range(ROW_SIZE_MIN, ROW_SIZE_MAX), value = ROW_SIZE_INIT)
-topK = st.sidebar.number_input('Choose top_k result', min_value=1, max_value=1000, step=1, value=100)
+topK = st.sidebar.number_input('Choose top_k result', min_value=TOP_K_MIN, max_value=TOP_K_MAX, step=TOP_K_STEP, value=TOP_K_INIT)
 
 st.header("Movie Character Retrieval System")
 st.subheader("Query Image")
@@ -50,25 +50,26 @@ st.subheader("Query Image")
 ## Input Image Query
 st.sidebar.markdown("<h1 style='text-align:left; font-size: 18px;'>Select Input Image Query</h1>",unsafe_allow_html=True)
 st.sidebar.markdown("<h1 style='font-size: 16px;'>Choose movie</h1>", unsafe_allow_html=True)
-chosen_movie = st.sidebar.selectbox('Choose movie', list(MOVIES_DIR_MAPPING.keys()), label_visibility="collapsed")
+# chosen_movie = st.sidebar.selectbox('Choose movie', list(MOVIES_DIR_MAPPING.keys()), label_visibility="collapsed")
+CHOSEN_PARAMS[MOVIE.NAME] = st.sidebar.selectbox('Choose movie', list(MOVIES_DIR_MAPPING.keys()), label_visibility="collapsed")    
 
 st.sidebar.markdown("<h1 style='font-size: 16px;'>Choose character</h1>", unsafe_allow_html=True)
-option_characters = MOVIES_CHARACTERS_MAPPING[chosen_movie]
-chosen_movie_fol = MOVIES_DIR_MAPPING[chosen_movie]
-chosen_character = st.sidebar.selectbox('Choose character', option_characters , label_visibility="collapsed")
+option_characters = MOVIES_CHARACTERS_MAPPING[CHOSEN_PARAMS[MOVIE.NAME]]
+CHOSEN_PARAMS[MOVIE.FOLDER] = MOVIES_DIR_MAPPING[CHOSEN_PARAMS[MOVIE.NAME]]
+CHOSEN_PARAMS[MOVIE.CHARACTER] = st.sidebar.selectbox('Choose character', option_characters , label_visibility="collapsed")
 
 st.sidebar.markdown("<h1 style='font-size: 16px;'>Want to compare between Face Detection - Model Embedding</h1>", unsafe_allow_html=True)
-compare_bw_face_and_em = st.sidebar.checkbox("Yes", value=True)
+compare_bw_face_and_em = st.sidebar.checkbox("Yes", value=False)
 
 if not compare_bw_face_and_em:
     st.sidebar.markdown("<h1 style='font-size: 16px;'>Choose face detection type</h1>", unsafe_allow_html=True)
-    chosen_face_det = st.sidebar.selectbox('Choose model detection type', DET_MODELS, label_visibility="collapsed")
+    CHOSEN_PARAMS[DETECTION.MODEL] = st.sidebar.selectbox('Choose model detection type', DET_MODELS, label_visibility="collapsed")
 
     st.sidebar.markdown("<h1 style='font-size: 16px;'>Choose model embedding type</h1>", unsafe_allow_html=True)
-    chosen_emb_model = st.sidebar.selectbox('Choose model embedding type', list(EMB_MODELS.keys()), label_visibility="collapsed")
-    chosen_emb_fol = EMB_MODELS[chosen_emb_model]
+    CHOSEN_PARAMS[EMBBEDDING.MODEL] = st.sidebar.selectbox('Choose model embedding type', list(EMB_MODELS.keys()), label_visibility="collapsed")
+    CHOSEN_PARAMS[EMBBEDDING.FOLDER] = EMB_MODELS[CHOSEN_PARAMS[EMBBEDDING.MODEL]]
 
-path_to_imgs_query = os.path.join(ROOT_QUERY, chosen_movie_fol, chosen_character)
+path_to_imgs_query = os.path.join(ROOT_QUERY, CHOSEN_PARAMS[MOVIE.FOLDER], CHOSEN_PARAMS[MOVIE.CHARACTER])
 lst_images = sorted(os.listdir(path_to_imgs_query))
 
 ## Initialize session state for checkboxes if not already done
@@ -89,30 +90,38 @@ for idx, Image in enumerate(Images):
 # ###################################################################################################
 # INIT GLOBAL PARAMS
 ## Initialize global parameters
-init_chosen_movie(chosen_movie)
-init_chosen_movie_fol(chosen_movie_fol)
-init_chosen_character(chosen_character)
-init_chosen_face_det(chosen_face_det)
-init_chosen_emb_fol(chosen_emb_fol)
+path.set_chosen_movie(CHOSEN_PARAMS[MOVIE.NAME])
+path.set_chosen_movie_fol(CHOSEN_PARAMS[MOVIE.FOLDER])
+path.set_chosen_character(CHOSEN_PARAMS[MOVIE.CHARACTER])
+path.set_chosen_face_det(CHOSEN_PARAMS[DETECTION.MODEL])
+path.set_chosen_emb_fol(CHOSEN_PARAMS[EMBBEDDING.FOLDER])
+path.set_topK(topK)
 
+path.set_faiss_index_path()
+path.set_chosen_avatar_dir_path()
+path.set_evaluation_file(topK)
+path.set_read_file_emb_path()
+
+shot = Shot(path)
 # ###################################################################################################
 # RETRIEVE THE TOP K RESULTS
 ## Show result of specific detection and embedding model
 if compare_bw_face_and_em == False:
-    face_det_model_emb_name = get_face_det_model_emb_name()
-    chosen_avatar_dir_path = get_chosen_avatar_dir_path()
-    faiss_index_emb_path = get_faiss_index_path()
-    read_files_emb_path = get_read_file_emb_path()
+    face_det_model_emb_name = path.get_face_det_model_emb_name()
+    shot.init_shot_result(face_det_model_emb_name) 
+    # chosen_avatar_dir_path = path.get_chosen_avatar_dir_path()
+    # faiss_index_emb_path = path.get_faiss_index_path()
+    # read_files_emb_path = path.get_read_file_emb_path()
     
-    add_to_shot_result(shot_result, face_det_model_emb_name) 
     for character_image_index in range(len(lst_images)):
         chk_key, character_key = get_check_key_and_character_key(character_image_index)
         if chk_key in st.session_state and st.session_state[chk_key]:
-            chosen_avatar_emb_path = get_chosen_avatar_emb_path(chosen_avatar_dir_path, lst_images, character_image_index)
-            character_result_set = retrieve_shots_from_query(chosen_avatar_emb_path, faiss_index_emb_path, \
-                read_files_emb_path, topK)
-            shot_result[face_det_model_emb_name][character_key] = set()
-            shot_result[face_det_model_emb_name][character_key].update(character_result_set)
+            path.set_chosen_avatar_emb_path(character_image_index, lst_images)
+            # chosen_avatar_emb_path = path.get_chosen_avatar_emb_path()
+            character_result_set = shot.get_shots_from_query()
+            shot.add_to_shot_result(face_det_model_emb_name, character_key, character_result_set)
+            # shot_result[face_det_model_emb_name][character_key] = set()
+            # shot_result[face_det_model_emb_name][character_key].update(character_result_set)
 ## Show result of all detection and embedding model
 else:
     for character_image_index in range(len(lst_images)):
@@ -137,17 +146,18 @@ else:
 # # ######################################################################################################
 # EVALUATION METRICS
 ## Ground truth
-path_to_ground_truth = os.path.join(ROOT_GROUND_TRUTH, CHOSEN_PARAMS[CHOSEN_MOVIE_FOL],"{}.xlsx".format(CHOSEN_PARAMS[CHOSEN_CHARACTER]))
+path_to_ground_truth = os.path.join(ROOT_GROUND_TRUTH, CHOSEN_PARAMS[MOVIE.FOLDER],"{}.xlsx".format(CHOSEN_PARAMS[MOVIE.CHARACTER]))
 df = pd.read_excel(path_to_ground_truth)
 df_ground_truth_full = df["Full"]
 lst_groundtruth = [i for i in df_ground_truth_full]
-evaluation_file = get_evaluation_file(topK, CHOSEN_PARAMS[CHOSEN_MOVIE_FOL], CHOSEN_PARAMS[CHOSEN_CHARACTER])
+evaluation_file = path.get_evaluation_file()
 
 if not compare_bw_face_and_em:
-    face_det_model_emb_name = get_face_det_model_emb_name()
-    dict_predict = get_frequency_dict_based_character(shot_result, face_det_model_emb_name)
+    # face_det_model_emb_name = get_face_det_model_emb_name()
+    dict_predict = shot.get_frequency_dict_based_character(face_det_model_emb_name)
     lst_predict = get_topK_most_frequent_elements(dict_predict, topK)
-    precision_scores, recall_scores, f1_score, ap = calculate_metrics(lst_predict, lst_groundtruth)
+    evaluation = Evaluation(lst_predict, lst_groundtruth)
+    precision_scores, recall_scores, f1_score, ap = evaluation.calculate_metrics()
     chart_data = pd.DataFrame(
         {
             "Precsion": convert_list_to_numpy_array(precision_scores),
@@ -216,7 +226,7 @@ else:
     else:
         st_video = st.empty()
 
-str_infor = "Top <b>{}</b> results of <b>{}</b> in <b>{}</b>".format(len(lst_predict), CHOSEN_PARAMS[CHOSEN_CHARACTER], CHOSEN_PARAMS[CHOSEN_MOVIE])
+str_infor = "Top <b>{}</b> results of <b>{}</b> in <b>{}</b>".format(len(lst_predict), path.get_chosen_character, path.get_chosen_movie)
 
 str_results = """
 <table style="border: 1px solid #cc9966; width: 100%;" cellspacing="0" cellpadding="10px">

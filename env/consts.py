@@ -1,3 +1,6 @@
+from enum import Enum
+
+## Constants
 MOVIES_DIR_MAPPING = {
     'Memphis': 'Memphis',
     'Calloused Hands': 'Calloused_Hands',
@@ -34,21 +37,6 @@ DET_EMB_MAPPING = (
     ('opencv', 'GhostFaceNet')
 )
 
-CHOSEN_MOVIE = 'chosen_movie'
-CHOSEN_MOVIE_FOL = 'chosen_movie_fol'
-CHOSEN_CHARACTER = 'chosen_character'
-CHOSEN_FACE_DET = 'chosen_face_det'
-CHOSEN_EMB_MODEL = 'chosen_emb_model'
-CHOSEN_EMB_FOL = 'chosen_emb_fol'
-CHOSEN_PARAMS = {
-    CHOSEN_MOVIE: None,
-    CHOSEN_MOVIE_FOL: None,
-    CHOSEN_CHARACTER: None,
-    CHOSEN_FACE_DET: None,
-    CHOSEN_EMB_MODEL: None,
-    CHOSEN_EMB_FOL: None,
-}
-
 ## Directory paths
 ROOT_GROUND_TRUTH ="data/ground_truth"
 ROOT_QUERY ="data/character_query"
@@ -71,3 +59,18 @@ TOP_K_MIN = 1
 TOP_K_MAX = 1000
 TOP_K_STEP = 1
 TOP_K_INIT = 5
+
+## Chosen Params
+CHOSEN_PARAMS = {}
+
+class MOVIE(Enum):
+    NAME = "Name"
+    FOLDER = "Folder"
+    CHARACTER = "Character"
+    
+class EMBBEDDING(Enum):
+    MODEL = "Model"
+    FOLDER = "Folder"
+    
+class DETECTION(Enum):
+    MODEL = "Model"
