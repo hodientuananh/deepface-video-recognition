@@ -53,13 +53,6 @@ def get_topK_most_frequent_elements(dict_frequency, K) -> list:
     dict_frequency = sort_most_frequency_dict_value_basing(dict_frequency)
     return convert_dict_to_list(dict_frequency)[:K]
 
-# def get_frequency_dict_based_character(shot_result, face_det_model_emb_name):
-#     dict_predict = dict()
-#     for character_key, _ in shot_result[face_det_model_emb_name].items():
-#         character_predict_lst = convert_set_to_list(shot_result[face_det_model_emb_name][character_key])
-#         dict_predict = merge_2_lst_to_frequency_dict(character_predict_lst, [], dict_predict)
-#     return dict_predict
-
 def get_check_key_and_character_key(character_image_index):
     chk_key = f'chk_{character_image_index}'
     character_key = f'character_{character_image_index}'

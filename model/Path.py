@@ -19,6 +19,14 @@ class Path:
     def __init__(self) -> None:
         pass
     
+    def set_global_path(self, face_det, emb_fol) -> None:
+        self.set_chosen_face_det(face_det)
+        self.set_chosen_emb_fol(emb_fol)
+        self.set_face_det_model_emb_name()
+        self.set_faiss_index_path()
+        self.set_chosen_avatar_dir_path()
+        self.set_read_file_emb_path()
+    
     def get_chosen_movie(self) -> str:
         return self.chosen_movie
     
@@ -59,7 +67,7 @@ class Path:
         return self.chosen_avatar_dir_path
     
     def set_chosen_avatar_dir_path(self) -> None:
-        self.chosen_avatar_dir_path = f"{ROOT_FEATURES_QUERY}/{self.chosen_movie_fol}/{self.chosen_emb_fol}/{self.chosen_character}/"
+        self.chosen_avatar_dir_path = f"{ROOT_FEATURES_QUERY}/{self.chosen_movie_fol}/{self.chosen_emb_fol}/{self.chosen_character}"
     
     def get_faiss_index_path(self) -> str:
         return self.faiss_index_emb_path

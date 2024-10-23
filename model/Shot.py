@@ -13,7 +13,7 @@ class Shot:
     def __init__(self, path: Path) -> None:
         self.path = path
     
-    def get_shots_from_query(self) -> set():
+    def get_shots_per_character(self):
         global faiss
         set_result = set()
         index = faiss.read_index(self.path.get_faiss_index_path())
@@ -33,10 +33,10 @@ class Shot:
             set_result.add(shot_info)
         return set_result
 
-    def get_frequency_dict_based_character(self, face_det_model_emb_name):
+    def get_frequency_dict_based_character(self):
         dict_predict = dict()
-        for character_key, _ in self.result[face_det_model_emb_name].items():
-            character_predict_lst = convert_set_to_list(self.result[face_det_model_emb_name][character_key])
+        for character_key, _ in self.result[self.path.get_face_det_model_emb_name()].items():
+            character_predict_lst = convert_set_to_list(self.result[self.path.get_face_det_model_emb_name()][character_key])
             dict_predict = merge_2_lst_to_frequency_dict(character_predict_lst, [], dict_predict)
         return dict_predict
 
@@ -46,13 +46,13 @@ class Shot:
             result_lst.extend(value)
         return set(result_lst)
     
-    def init_shot_result(self, face_det_model_emb_name: str) -> None:
-        if face_det_model_emb_name not in self.result:
-            self.result[face_det_model_emb_name] = dict()
+    def init_shot_result(self) -> None:
+        if self.path.get_face_det_model_emb_name() not in self.result:
+            self.result[self.path.get_face_det_model_emb_name()] = dict()
             
-    def add_to_shot_result(self, face_det_model_emb_name, character_key: str, character_result_set: set) -> None:
-        self.result[face_det_model_emb_name][character_key] = set()
-        self.result[face_det_model_emb_name][character_key].update(character_result_set)  
+    def add_to_shot_result(self, character_key: str, character_result_set: set) -> None:
+        self.result[self.path.get_face_det_model_emb_name()][character_key] = set()
+        self.result[self.path.get_face_det_model_emb_name()][character_key].update(character_result_set)  
             
     def extract_shot_from_face_img(self, face_img: str) -> str:
         return face_img.split('/')[SHOT_INFO_POSITION]      

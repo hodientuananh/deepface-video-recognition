@@ -59,7 +59,7 @@ CHOSEN_PARAMS[MOVIE.FOLDER] = MOVIES_DIR_MAPPING[CHOSEN_PARAMS[MOVIE.NAME]]
 CHOSEN_PARAMS[MOVIE.CHARACTER] = st.sidebar.selectbox('Choose character', option_characters , label_visibility="collapsed")
 
 st.sidebar.markdown("<h1 style='font-size: 16px;'>Want to compare between Face Detection - Model Embedding</h1>", unsafe_allow_html=True)
-compare_bw_face_and_em = st.sidebar.checkbox("Yes", value=False)
+compare_bw_face_and_em = st.sidebar.checkbox("Yes", value=True)
 
 if not compare_bw_face_and_em:
     st.sidebar.markdown("<h1 style='font-size: 16px;'>Choose face detection type</h1>", unsafe_allow_html=True)
@@ -93,55 +93,36 @@ for idx, Image in enumerate(Images):
 path.set_chosen_movie(CHOSEN_PARAMS[MOVIE.NAME])
 path.set_chosen_movie_fol(CHOSEN_PARAMS[MOVIE.FOLDER])
 path.set_chosen_character(CHOSEN_PARAMS[MOVIE.CHARACTER])
-path.set_chosen_face_det(CHOSEN_PARAMS[DETECTION.MODEL])
-path.set_chosen_emb_fol(CHOSEN_PARAMS[EMBBEDDING.FOLDER])
-path.set_topK(topK)
 
-path.set_faiss_index_path()
-path.set_chosen_avatar_dir_path()
+path.set_topK(topK)
 path.set_evaluation_file(topK)
-path.set_read_file_emb_path()
 
 shot = Shot(path)
 # ###################################################################################################
 # RETRIEVE THE TOP K RESULTS
 ## Show result of specific detection and embedding model
 if compare_bw_face_and_em == False:
-    face_det_model_emb_name = path.get_face_det_model_emb_name()
-    shot.init_shot_result(face_det_model_emb_name) 
-    # chosen_avatar_dir_path = path.get_chosen_avatar_dir_path()
-    # faiss_index_emb_path = path.get_faiss_index_path()
-    # read_files_emb_path = path.get_read_file_emb_path()
-    
+    path.set_global_path(CHOSEN_PARAMS[DETECTION.MODEL], CHOSEN_PARAMS[EMBBEDDING.FOLDER])
+    # face_det_model_emb_name = path.get_face_det_model_emb_name()
+    shot.init_shot_result()
     for character_image_index in range(len(lst_images)):
         chk_key, character_key = get_check_key_and_character_key(character_image_index)
         if chk_key in st.session_state and st.session_state[chk_key]:
             path.set_chosen_avatar_emb_path(character_image_index, lst_images)
-            # chosen_avatar_emb_path = path.get_chosen_avatar_emb_path()
-            character_result_set = shot.get_shots_from_query()
-            shot.add_to_shot_result(face_det_model_emb_name, character_key, character_result_set)
-            # shot_result[face_det_model_emb_name][character_key] = set()
-            # shot_result[face_det_model_emb_name][character_key].update(character_result_set)
+            character_result_set = shot.get_shots_per_character()
+            shot.add_to_shot_result(character_key, character_result_set)
 ## Show result of all detection and embedding model
 else:
-    for character_image_index in range(len(lst_images)):
-        chk_key, character_key = get_check_key_and_character_key(character_image_index)
-        for (face_det, emb_fol) in DET_EMB_MAPPING:
-            init_chosen_face_det(face_det)
-            init_chosen_emb_fol(emb_fol)
-            
-            face_det_model_emb_name = get_face_det_model_emb_name()
-            chosen_avatar_dir_path = get_chosen_avatar_dir_path()
-            faiss_index_emb_path = get_faiss_index_path()
-            read_files_emb_path = get_read_file_emb_path()
-            
-            add_to_shot_result(shot_result, face_det_model_emb_name)
+    for (face_det, emb_fol) in DET_EMB_MAPPING:
+        path.set_global_path(face_det, emb_fol)
+        # face_det_model_emb_name = path.get_face_det_model_emb_name()
+        shot.init_shot_result()
+        for character_image_index in range(len(lst_images)):
+            chk_key, character_key = get_check_key_and_character_key(character_image_index)        
             if chk_key in st.session_state and st.session_state[chk_key]:
-                chosen_avatar_emb_path = get_chosen_avatar_emb_path(chosen_avatar_dir_path, lst_images, character_image_index)    
-                character_result_set = retrieve_shots_from_query(chosen_avatar_emb_path, faiss_index_emb_path, \
-                    read_files_emb_path, topK)
-                shot_result[face_det_model_emb_name][character_key] = set()
-                shot_result[face_det_model_emb_name][character_key].update(character_result_set)
+                path.set_chosen_avatar_emb_path(character_image_index, lst_images)
+                character_result_set = shot.get_shots_per_character()
+                shot.add_to_shot_result(character_key, character_result_set)
 
 # # ######################################################################################################
 # EVALUATION METRICS
@@ -154,7 +135,7 @@ evaluation_file = path.get_evaluation_file()
 
 if not compare_bw_face_and_em:
     # face_det_model_emb_name = get_face_det_model_emb_name()
-    dict_predict = shot.get_frequency_dict_based_character(face_det_model_emb_name)
+    dict_predict = shot.get_frequency_dict_based_character()
     lst_predict = get_topK_most_frequent_elements(dict_predict, topK)
     evaluation = Evaluation(lst_predict, lst_groundtruth)
     precision_scores, recall_scores, f1_score, ap = evaluation.calculate_metrics()
@@ -170,12 +151,13 @@ if not compare_bw_face_and_em:
     st.write("Average Precision:", ap)
 else:
     for (face_det, emb_fol) in DET_EMB_MAPPING:
-        init_chosen_face_det(face_det)
-        init_chosen_emb_fol(emb_fol)
-        face_det_model_emb_name = get_face_det_model_emb_name()
-        dict_predict = get_frequency_dict_based_character(shot_result, face_det_model_emb_name)
+        path.set_chosen_face_det(face_det)
+        path.set_chosen_emb_fol(emb_fol)
+        face_det_model_emb_name = path.get_face_det_model_emb_name()
+        dict_predict = shot.get_frequency_dict_based_character()
         lst_predict = get_topK_most_frequent_elements(dict_predict, topK)
-        precision_scores, recall_scores, f1_score, ap = calculate_metrics(lst_predict, lst_groundtruth)
+        evaluation = Evaluation(lst_predict, lst_groundtruth)
+        precision_scores, recall_scores, f1_score, ap = evaluation.calculate_metrics()
         rows = np.append(rows, ap)
         columns = np.append(columns, face_det_model_emb_name)
 
