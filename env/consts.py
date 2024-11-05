@@ -34,7 +34,7 @@ DET_EMB_MAPPING = (
     ('opencv', 'ArcFace'),
     ('opencv', 'VggFace'),
     ('opencv', 'FaceNet'),
-    ('opencv', 'GhostFaceNet')
+    ('opencv', 'GhostFaceNet'),
 )
 
 ## Directory paths
@@ -54,11 +54,12 @@ ROW_SIZE_MAX = 6
 ROW_SIZE_INIT = 3
 
 ## Top K
-TOP_K = 5
+# TOP_K = 100
 TOP_K_MIN = 1
 TOP_K_MAX = 1000
 TOP_K_STEP = 1
-TOP_K_INIT = 5
+TOP_K_INIT = 10
+DEFAULT_TOP_K_FRAMES = 10000
 
 ## Chosen Params
 CHOSEN_PARAMS = {}

@@ -22,7 +22,7 @@ class Evaluation:
                 f1_score.append(2 * (precision * recall) / (precision + recall))
         
         if precision_scores and recall_scores:
-            ap = sum(precision_scores) / len(self.ground_truth_lst)
+            ap = sum(precision_scores) / correct
         else:
             ap = 0
 
