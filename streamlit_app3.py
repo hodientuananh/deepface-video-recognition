@@ -6,8 +6,8 @@ import streamlit as st
 from PIL import Image
 from math import ceil
 
-from function.utils import convert_list_to_numpy_array, get_topK_most_frequent_elements, \
-    get_check_key_and_character_key, get_movie
+from function.utils import convert_list_to_numpy_array, get_topK_first_elements, \
+    get_check_key_and_character_key
 from env.consts import CHOSEN_PARAMS, DET_EMB_MAPPING, DET_MODELS, DETECTION, EMB_MODELS, EMBBEDDING, MOVIE, MOVIES_CHARACTERS_MAPPING, \
     ROOT_SHOTS, MOVIES_DIR_MAPPING, ROOT_GROUND_TRUTH, ROOT_QUERY, ROOT_SHOTS, BATCH_SIZE, \
     ROOT_THUMBNAIL, ROW_SIZE_MIN, ROW_SIZE_MAX, ROW_SIZE_INIT, TOP_K_MIN, TOP_K_MAX, TOP_K_STEP, TOP_K_INIT
@@ -85,7 +85,7 @@ for idx, Image in enumerate(Images):
     str_key = "chk_{}".format(idx)
     with columns_imgs[idx]:
         st.image(Image)
-        st.checkbox(lst_images[idx].split('.')[0], key=str_key, value=True)
+        st.checkbox(lst_images[idx].split('.')[0], key=str_key, value=False)
         
 # ###################################################################################################
 # INIT GLOBAL PARAMS
@@ -102,14 +102,14 @@ shot = Shot(path)
 # RETRIEVE THE TOP K RESULTS
 ## Show result of specific detection and embedding model
 if compare_bw_face_and_em == False:
+    path.set_global_path(CHOSEN_PARAMS[DETECTION.MODEL], CHOSEN_PARAMS[EMBBEDDING.FOLDER]) 
+    shot.init_shot_result()
     for character_image_index in range(len(lst_images)):
         chk_key, character_key = get_check_key_and_character_key(character_image_index)
-        path.set_global_path(CHOSEN_PARAMS[DETECTION.MODEL], CHOSEN_PARAMS[EMBBEDDING.FOLDER])
-        shot.init_shot_result()
-        if chk_key in st.session_state and st.session_state[chk_key]:
+        if chk_key in st.session_state and st.session_state[chk_key]:   
             path.set_chosen_avatar_emb_path(character_image_index, lst_images)
-            character_result_lst = shot.get_shots_per_character()
-            shot.add_to_shot_result(character_key, character_result_lst)
+            character_result_dict = shot.get_shots_per_character()
+            shot.add_to_shot_result(character_key, character_result_dict)
 ## Show result of all detection and embedding model
 else:
     for character_image_index in range(len(lst_images)):
@@ -131,11 +131,13 @@ df_ground_truth_full = df["Full"]
 lst_groundtruth = [i for i in df_ground_truth_full]
 evaluation_file = path.get_evaluation_file()
 
+st.write(shot.result)
+
 if not compare_bw_face_and_em:
     # face_det_model_emb_name = get_face_det_model_emb_name()
-    dict_predict = shot.get_frequency_dict_based_character()
+    dict_predict = shot.get_sorted_weight_dict_per_character()
     st.write("dict_predict", dict_predict)
-    lst_predict = get_topK_most_frequent_elements(dict_predict, topK)
+    lst_predict = get_topK_first_elements(dict_predict, topK)
     st.write("lst_predict", lst_predict)
     evaluation = Evaluation(lst_predict, lst_groundtruth)
     precision_scores, recall_scores, f1_score, ap = evaluation.calculate_metrics()
@@ -153,8 +155,8 @@ if not compare_bw_face_and_em:
 else:
     for (face_det, emb_fol) in DET_EMB_MAPPING:
         path.set_global_path(face_det, emb_fol)
-        dict_predict = shot.get_frequency_dict_based_character()
-        lst_predict = get_topK_most_frequent_elements(dict_predict, topK)
+        dict_predict = shot.get_sorted_weight_dict_per_character()
+        lst_predict = get_topK_first_elements(dict_predict, topK)
         evaluation = Evaluation(lst_predict, lst_groundtruth)
         precision_scores, recall_scores, f1_score, ap = evaluation.calculate_metrics()
         rows = np.append(rows, ap)
@@ -174,7 +176,7 @@ else:
     st.table(chart_data)
     chart_data.to_csv(evaluation_file, sep=',', encoding='utf-8', index=False, header=True)
 
-# # ######################################################################################################
+# ######################################################################################################
 # SHOW THE VIDEO RESULTS
 num_batches = ceil(len(lst_predict)/BATCH_SIZE)
 
@@ -191,7 +193,6 @@ if 'selected_shot' not in st.session_state:
     st.session_state.selected_shot=''
 else:
     shot_i = st.session_state.selected_shot
-    st.write(get_movie(shot_i))
     if len(shot_i)>0:
         arr_str = shot_i.split('-')
         selected_movie = arr_str[0]

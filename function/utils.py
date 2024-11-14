@@ -49,8 +49,7 @@ def merge_2_lst_to_frequency_dict(list_1, list_2, dict) -> dict:
         add_list_to_dict(frequency_dict, list_2)
     return frequency_dict
 
-def get_topK_most_frequent_elements(dict_frequency, K) -> list:
-    dict_frequency = sort_most_frequency_dict_value_basing(dict_frequency)
+def get_topK_first_elements(dict_frequency, K) -> list:
     return convert_dict_to_list(dict_frequency)[:K]
 
 def get_check_key_and_character_key(character_image_index):
