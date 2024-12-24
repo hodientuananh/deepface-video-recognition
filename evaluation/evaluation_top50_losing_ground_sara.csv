@@ -1,0 +1,13 @@
+Face Detection and Model Embedding,Average Precision
+det_fastmtcnn-emb_ArcFace,0.7234940325171763
+det_fastmtcnn-emb_FaceNet,0.4631445150186845
+det_fastmtcnn-emb_VggFace,0.44539547305813104
+det_retinaface-emb_VggFace,0.4197181058173164
+det_retinaface-emb_FaceNet,0.3832218144944418
+det_opencv-emb_GhostFaceNet,0.3020938906718956
+det_fastmtcnn-emb_GhostFaceNet,0.29408576141005527
+det_retinaface-emb_GhostFaceNet,0.25805507343850953
+det_opencv-emb_ArcFace,0.24481528275645922
+det_opencv-emb_FaceNet,0.24202564746931213
+det_opencv-emb_VggFace,0.24105069100438756
+det_retinaface-emb_ArcFace,0.21230254648038546

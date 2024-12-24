@@ -7,10 +7,10 @@ import numpy as np
 
 class Shot:
     result = dict()
-    path = Path()
-    chk_key_lst = []
     weight_dict = dict()
     average_distance_dict = dict()
+    path = Path()
+    chk_key_lst = []
     
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -49,7 +49,6 @@ class Shot:
                 .replace(f"-emb_{self.path.get_chosen_emb_fol()}", "")
                 
     def get_weight_dict_from_topK_frames(self) -> dict:
-        self.weight_dict = dict()
         index = self.load_index()
         chosen_character_emb = self.load_chosen_character_emb()
         distances, indices = self.search_topK_frames(index, chosen_character_emb, DEFAULT_TOP_K_FRAMES)
@@ -60,71 +59,71 @@ class Shot:
             face_relevant_img_path = self.get_face_relevant_img_path(face_relevant_emb_path)
             shot_info = self.extract_shot_from_face_img(face_relevant_img_path)
             self.add_shot_to_weight_dict(shot_info, face_relevant_dist)
-            self.cal_weight_distance()
+        self.cal_weight_distance()
         return self.average_distance_dict
-    
-    # def sorted_dict_by_weight(self, dict_result: dict) -> list:
-    #     return sorted(dict_result.items(), key=lambda item: item[1])
     
     def cal_sorted_weight_per_shot(self, weight_per_shot: dict) -> dict:
         return dict(sorted(weight_per_shot.items(), key=lambda item: item[1]))
          
-    def get_topK_shots(self, weight_per_shot: dict) -> dict:
-        sorted_shots = self.cal_sorted_weight_per_shot(weight_per_shot)
-        return dict(list(sorted_shots.items())[:self.path.get_topK()])
+    def get_sorted_shot_dict(self, weight_per_shot: dict) -> dict:
+        sorted_shot_dict = self.cal_sorted_weight_per_shot(weight_per_shot)
+        return dict(list(sorted_shot_dict.items()))
     
-    def get_list_distance_per_shot(self) -> dict:
-        weight_lst_per_shot = {}
-        for _, dict_shot_character in self.result[self.path.get_face_det_model_emb_name()].items():
-            for shot, distance in dict_shot_character.items():
-                if shot not in weight_lst_per_shot:
-                    weight_lst_per_shot[shot] = [distance]
-                else:
-                    weight_lst_per_shot[shot].append(distance)
-        return weight_lst_per_shot
+    # def get_list_distance_per_shot(self) -> dict:
+    #     weight_lst_per_shot = {}
+    #     for _, dict_shot_character in self.result[self.path.get_face_det_model_emb_name()].items():
+    #         for shot, distance in dict_shot_character.items():
+    #             if shot not in weight_lst_per_shot:
+    #                 weight_lst_per_shot[shot] = [distance]
+    #             else:
+    #                 weight_lst_per_shot[shot].append(distance)
+    #     return weight_lst_per_shot
 
-    def cal_average_distance_per_shot(self, weight_lst_per_shot: dict) -> dict:
-        weight_per_shot = {}
-        for shot, distance_lst in weight_lst_per_shot.items():
-            weight_per_shot[shot] = sum(distance_lst)/len(distance_lst)
-        return weight_per_shot
+    # def cal_average_distance_per_shot(self, weight_lst_per_shot: dict) -> dict:
+    #     weight_per_shot = {}
+    #     for shot, distance_lst in weight_lst_per_shot.items():
+    #         weight_per_shot[shot] = sum(distance_lst)/len(distance_lst)
+    #     return weight_per_shot
     
-    def get_shots_per_character(self) -> dict:
+    def get_sorted_shots_per_character(self) -> dict:
         dict_result = self.get_weight_dict_from_topK_frames()
-        return self.get_topK_shots(dict_result)
+        return self.get_sorted_shot_dict(dict_result)
 
-    def get_sorted_weight_dict_per_character(self) -> dict:
-        # dict_predict = dict()
-        # for character_key, _ in self.result[self.path.get_face_det_model_emb_name()].items():
-        #     character_predict_lst = self.result[self.path.get_face_det_model_emb_name()][character_key]
-        #     dict_predict = merge_2_lst_to_frequency_dict(character_predict_lst, [], dict_predict)
-        # return dict_predict
-        weight_lst_per_shot = self.get_list_distance_per_shot()
-        weight_per_shot = self.cal_average_distance_per_shot(weight_lst_per_shot)
-        sorted_weight_dict_per_character = self.cal_sorted_weight_per_shot(weight_per_shot)
-        return sorted_weight_dict_per_character
-
-    # def get_set_of_result_shots(self, result: dict) -> set:
-    #     result_lst = list()
-    #     for _, value in result.items():
-    #         result_lst.extend(value)
-    #     return set(result_lst)
+    # def get_sorted_weight_dict_per_character(self) -> dict:
+    #     weight_lst_per_shot = self.get_list_distance_per_shot()
+    #     weight_per_shot = self.cal_average_distance_per_shot(weight_lst_per_shot)
+    #     sorted_weight_dict_per_character = self.cal_sorted_weight_per_shot(weight_per_shot)
+    #     return sorted_weight_dict_per_character
     
     def init_shot_result(self) -> None:
+        self.result = dict()
+        self.weight_dict = dict()
+        self.average_distance_dict = dict()
+    
+    def init_face_det_model_emb(self) -> None:
         face_det_model_emb_name = self.path.get_face_det_model_emb_name()
-        if face_det_model_emb_name in self.result and len(face_det_model_emb_name) > 0:
+        if face_det_model_emb_name in self.result:
             self.result[self.path.get_face_det_model_emb_name()].clear()
         self.result[self.path.get_face_det_model_emb_name()] = dict()     
             
     def add_to_shot_result(self, character_key: str, character_result_dict: dict) -> None:
         self.result[self.path.get_face_det_model_emb_name()][character_key] = dict()
-        self.result[self.path.get_face_det_model_emb_name()][character_key].update(character_result_dict) 
+        self.result[self.path.get_face_det_model_emb_name()][character_key] = character_result_dict
             
     def extract_shot_from_face_img(self, face_img: str) -> str:
         return face_img.split('/')[SHOT_INFO_POSITION]      
     
-    def get_shot_result(self) -> dict:
+    def get_result(self) -> dict:
         return self.result
+    
+    def get_result_per_face_det_model_emb(self, topK) -> list:
+        char = self.result[self.path.get_face_det_model_emb_name()]
+        output = list()
+        for _, v in char.items():
+            for k, _ in list(v.items())[:topK]:
+                output.append(k)
+                
+        return output
     
     def get_path(self) -> Path:
         return self.path
